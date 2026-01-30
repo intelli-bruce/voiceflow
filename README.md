@@ -1,110 +1,71 @@
 # VoiceFlow
 
-macOS 네이티브 음성 입력 앱. 글로벌 단축키(Ctrl 더블탭)로 음성 인식을 시작하고, 인식된 텍스트를 현재 포커스된 앱에 자동으로 입력합니다.
+macOS 메뉴바 음성입력 앱. Ctrl 더블탭으로 녹음 시작/종료, Qwen3-ASR로 음성인식 후 텍스트 자동 입력.
 
-> Wispr Flow의 로컬 오픈소스 대안 — 모든 데이터는 로컬에서 처리됩니다.
-
-## 주요 기능
-
-- **Ctrl 더블탭** — 어디서든 녹음 시작/종료
-- **실시간 음성 인식** — Qwen3-ASR-1.7B 모델 (MPS GPU 가속)
-- **자동 텍스트 입력** — 인식 결과를 현재 포커스된 앱에 붙여넣기
-- **플로팅 오버레이** — 녹음/인식/완료 상태 표시
-- **메뉴바 아이콘** — ASR 서버 연결 상태 확인
-- **52개 언어 지원** — 한국어 기본, 다국어 가능
-
-## 요구사항
-
-- macOS 14+ (Sonoma)
-- Python 3.12+
-- Apple Silicon Mac (MPS GPU 가속)
-
-## 설치
-
-### 1. ASR 서버 (Python)
+## 실행
 
 ```bash
-# venv 생성
-python3 -m venv .venvs/qwen3-asr
-source .venvs/qwen3-asr/bin/activate
-
-# 의존성 설치
-pip install qwen-asr websockets numpy soundfile
-
-# 서버 실행
-python server/main.py
-```
-
-첫 실행 시 모델을 자동 다운로드합니다 (~3.5GB).
-
-### 2. Swift 앱
-
-```bash
-cd VoiceFlow
-swift build
-
-# .app 번들 생성
-cd ..
-bash scripts/bundle.sh
-
-# 실행
 open VoiceFlow.app
-# 또는 터미널에서 직접:
-VoiceFlow.app/Contents/MacOS/VoiceFlow
 ```
 
-### 3. 권한 설정
+앱 실행 시 ASR 서버(Python)가 자동으로 같이 뜸. 앱 종료 시 서버도 자동 종료.
 
-시스템 설정 → 개인정보 보호 및 보안:
-- **입력 모니터링** → VoiceFlow 허용
-- **손쉬운 사용** → VoiceFlow 허용
-- **마이크** → VoiceFlow 허용
+## ⚠️ 접근성 권한 (중요!)
 
-## 사용법
+Ctrl 더블탭이 안 먹으면 **100% 접근성 권한 문제**.
 
-1. ASR 서버 실행 (`python server/main.py`)
-2. VoiceFlow 앱 실행
-3. **Ctrl 더블탭** → 말하기 → **Ctrl 더블탭** → 텍스트 입력됨
+### 증상
+- 앱 실행은 되지만 Ctrl 더블탭이 반응 없음
+- 로그에 "Event tap started successfully!" 나오지만 flagsChanged 로그 없음
 
-## 프로젝트 구조
+### 해결
+**시스템 설정 → 개인정보 보호 및 보안 → 손쉬운 사용**에서:
+1. VoiceFlow.app이 목록에 없으면 **+ 버튼**으로 추가
+   - 경로: `/Users/brucechoe/Projects/voiceflow/VoiceFlow.app`
+2. 이미 있으면 **토글 끄고 → 다시 켜기**
 
-```
-voiceflow/
-├── server/
-│   ├── main.py              # WebSocket ASR 서버 (Qwen3-ASR + MPS)
-│   └── requirements.txt
-├── VoiceFlow/               # Swift Package
-│   ├── Package.swift
-│   ├── Sources/
-│   │   ├── App/
-│   │   │   ├── VoiceFlowApp.swift
-│   │   │   └── AppDelegate.swift
-│   │   ├── Core/
-│   │   │   ├── HotkeyManager.swift    # Ctrl 더블탭 감지
-│   │   │   ├── AudioRecorder.swift    # AVCaptureSession 마이크 캡처
-│   │   │   ├── ASRClient.swift        # WebSocket 클라이언트
-│   │   │   └── TextInjector.swift     # 클립보드 + Cmd+V 입력
-│   │   └── UI/
-│   │       ├── OverlayPanel.swift     # 플로팅 오버레이
-│   │       └── StatusBarController.swift
-│   └── Resources/
-│       └── Info.plist
-├── scripts/
-│   ├── start-server.sh
-│   └── bundle.sh
-├── PRD.md
-└── README.md
+### ❗ 빌드 후 재승인 필요
+xcodebuild로 새로 빌드하면 **코드사인이 바뀌어서** macOS가 다른 앱으로 인식함.
+→ 빌드할 때마다 손쉬운 사용에서 VoiceFlow **토글 off → on** 해줘야 함.
+
+이건 macOS 보안 정책이라 우회 불가. 개발 중엔 어쩔 수 없음.
+
+### 절대 하지 말 것
+```bash
+tccutil reset Accessibility com.voiceflow.app  # ← 이거 하면 권한 완전 삭제됨
 ```
 
-## 성능
+## 실행 방식
 
-| 오디오 길이 | 처리 시간 (MPS) | 비고 |
-|------------|----------------|------|
-| ~2초 | ~0.7초 | |
-| ~3.5초 | ~1.0초 | |
-| ~5초 | ~2.0초 | |
-| 첫 추론 | ~9초 | MPS 셰이더 컴파일 (1회성) |
+- **반드시 `open VoiceFlow.app`으로 실행** (Finder 또는 터미널에서)
+- 터미널에서 바이너리 직접 실행 (`./VoiceFlow.app/Contents/MacOS/VoiceFlow`) 하면 터미널의 접근성 권한을 따라가서 별도 설정 필요
 
-## 라이선스
+## 구조
 
-MIT
+```
+VoiceFlow/
+├── Sources/
+│   ├── App/
+│   │   ├── VoiceFlowApp.swift    # 엔트리포인트
+│   │   └── AppDelegate.swift     # 메인 로직 + ASR 서버 관리
+│   ├── Core/
+│   │   ├── HotkeyManager.swift   # Ctrl 더블탭 감지
+│   │   ├── AudioRecorder.swift   # 마이크 녹음
+│   │   ├── ASRClient.swift       # WebSocket ASR 클라이언트
+│   │   └── TextInjector.swift    # 텍스트 주입
+│   └── UI/
+│       ├── StatusBarController.swift
+│       └── OverlayPanel.swift
+server/
+├── main.py                       # Qwen3-ASR WebSocket 서버
+scripts/
+├── run.sh                        # 실행 스크립트 (레거시)
+```
+
+## 효과음
+
+`AudioServicesPlaySystemSound` 사용 (시스템 사운드 경로).
+AVAudioPlayer/NSSound는 AVCaptureSession이 출력 스트림을 비활성화해서 안 됨.
+
+- 녹음 시작: Tink.aiff
+- 녹음 종료: Pop.aiff
