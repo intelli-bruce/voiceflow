@@ -1,0 +1,23 @@
+# Build
+VoiceFlow/.build/
+VoiceFlow.app/
+*.o
+*.d
+*.swiftmodule
+
+# macOS
+.DS_Store
+*.xcuserdata
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Logs
+*.log
+firebase-debug.log
+
+# IDE
+.vscode/
+.idea/
