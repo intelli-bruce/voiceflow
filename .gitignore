@@ -1,9 +1,16 @@
 # Build
 VoiceFlow/.build/
+VoiceFlow/build/
 VoiceFlow.app/
 *.o
 *.d
 *.swiftmodule
+
+# Xcode
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+xcuserdata/
 
 # macOS
 .DS_Store

@@ -1,5 +1,5 @@
 import AppKit
-import AVFoundation
+import AudioToolbox
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusBarController: StatusBarController!
@@ -10,10 +10,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var overlayPanel: OverlayPanel!
     private var isRecording = false
 
+    private var startSoundID: SystemSoundID = 0
+    private var stopSoundID: SystemSoundID = 0
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSLog("[AppDelegate] applicationDidFinishLaunching called!")
         // Hide dock icon
         NSApp.setActivationPolicy(.accessory)
+
+        // Load sounds via AudioServices (bypasses AVCaptureSession output blocking)
+        loadSounds()
 
         overlayPanel = OverlayPanel()
         textInjector = TextInjector()
@@ -57,6 +63,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         asrClient.connect()
     }
 
+    private func loadSounds() {
+        let startURL = URL(fileURLWithPath: "/System/Library/Sounds/Tink.aiff")
+        let stopURL = URL(fileURLWithPath: "/System/Library/Sounds/Pop.aiff")
+
+        var status = AudioServicesCreateSystemSoundID(startURL as CFURL, &startSoundID)
+        if status == noErr {
+            NSLog("[Audio] startSound loaded via AudioServices (ID: %d)", startSoundID)
+        } else {
+            NSLog("[Audio] ERROR: Failed to load startSound (status: %d)", status)
+        }
+
+        status = AudioServicesCreateSystemSoundID(stopURL as CFURL, &stopSoundID)
+        if status == noErr {
+            NSLog("[Audio] stopSound loaded via AudioServices (ID: %d)", stopSoundID)
+        } else {
+            NSLog("[Audio] ERROR: Failed to load stopSound (status: %d)", status)
+        }
+    }
+
+    private func playSound(_ soundID: SystemSoundID, name: String) {
+        guard soundID != 0 else {
+            NSLog("[Audio] WARNING: %@ not loaded, cannot play", name)
+            return
+        }
+        AudioServicesPlaySystemSound(soundID)
+        NSLog("[Audio] %@ played via AudioServices", name)
+    }
+
     private func toggleRecording() {
         if isRecording {
             stopRecording()
@@ -67,6 +101,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func startRecording() {
         isRecording = true
+        NSLog("[Recording] Starting recording, playing start sound")
+        playSound(startSoundID, name: "startSound")
         overlayPanel.showRecording()
         statusBarController.updateRecordingStatus(recording: true)
         asrClient.sendStart()
@@ -75,6 +111,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func stopRecording() {
         isRecording = false
+        NSLog("[Recording] Stopping recording, playing stop sound")
+        playSound(stopSoundID, name: "stopSound")
         audioRecorder.stopRecording()
         overlayPanel.showProcessing()
         statusBarController.updateRecordingStatus(recording: false)
