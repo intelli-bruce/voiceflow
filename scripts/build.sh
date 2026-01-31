@@ -13,7 +13,7 @@ DERIVED_DATA="/Users/brucechoe/Library/Developer/Xcode/DerivedData/VoiceFlow-gdu
 DEST="$PROJECT_DIR/VoiceFlow.app"
 
 echo "🔨 Building VoiceFlow..."
-xcodebuild -project "$PROJECT_DIR/VoiceFlow.xcodeproj" \
+xcodebuild -project "$PROJECT_DIR/VoiceFlow/VoiceFlow.xcodeproj" \
   -scheme VoiceFlow \
   -configuration Debug \
   build \
