@@ -1,5 +1,6 @@
 import AVFoundation
 import CoreMedia
+import CoreAudio
 
 final class AudioRecorder: NSObject, AVCaptureAudioDataOutputSampleBufferDelegate {
     var onAudioChunk: ((Data) -> Void)?
@@ -9,6 +10,7 @@ final class AudioRecorder: NSObject, AVCaptureAudioDataOutputSampleBufferDelegat
     private let targetSampleRate: Double = 16000
     private var isRecording = false
     private var currentDeviceID: String?
+    private var savedOutputVolume: Float32?
 
     /// Call once at app startup
     func prepare() {
@@ -16,6 +18,8 @@ final class AudioRecorder: NSObject, AVCaptureAudioDataOutputSampleBufferDelegat
     }
 
     func startRecording() {
+        // Save current output volume before ducking kicks in
+        savedOutputVolume = getOutputVolume()
         // Check if default device changed
         if let newDevice = AVCaptureDevice.default(for: .audio),
            newDevice.uniqueID != currentDeviceID {
@@ -28,6 +32,14 @@ final class AudioRecorder: NSObject, AVCaptureAudioDataOutputSampleBufferDelegat
 
     func stopRecording() {
         isRecording = false
+        // Restore output volume that macOS ducked
+        if let volume = savedOutputVolume {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                self?.setOutputVolume(volume)
+                NSLog("[AudioRecorder] Output volume restored to \(volume)")
+            }
+            savedOutputVolume = nil
+        }
         NSLog("[AudioRecorder] Recording stopped.")
     }
 
@@ -71,6 +83,49 @@ final class AudioRecorder: NSObject, AVCaptureAudioDataOutputSampleBufferDelegat
             session.startRunning()
             NSLog("[AudioRecorder] Capture session started (standby).")
         }
+    }
+
+    // MARK: - Output Volume (CoreAudio)
+
+    private func getDefaultOutputDeviceID() -> AudioDeviceID? {
+        var deviceID = AudioDeviceID(0)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        let status = AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &deviceID
+        )
+        return status == noErr ? deviceID : nil
+    }
+
+    private func getOutputVolume() -> Float32? {
+        guard let deviceID = getDefaultOutputDeviceID() else { return nil }
+        var volume = Float32(0)
+        var size = UInt32(MemoryLayout<Float32>.size)
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwareServiceDeviceProperty_VirtualMainVolume,
+            mScope: kAudioDevicePropertyScopeOutput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        let status = AudioObjectGetPropertyData(deviceID, &address, 0, nil, &size, &volume)
+        return status == noErr ? volume : nil
+    }
+
+    private func setOutputVolume(_ volume: Float32) {
+        guard let deviceID = getDefaultOutputDeviceID() else { return }
+        var vol = volume
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwareServiceDeviceProperty_VirtualMainVolume,
+            mScope: kAudioDevicePropertyScopeOutput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        AudioObjectSetPropertyData(
+            deviceID, &address, 0, nil,
+            UInt32(MemoryLayout<Float32>.size), &vol
+        )
     }
 
     // MARK: - AVCaptureAudioDataOutputSampleBufferDelegate
