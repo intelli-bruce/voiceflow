@@ -9,7 +9,6 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-DERIVED_DATA="/Users/brucechoe/Library/Developer/Xcode/DerivedData/VoiceFlow-gducekvflkibbkbmejqcbmdzqfzz/Build/Products/Debug/VoiceFlow.app"
 DEST="$PROJECT_DIR/VoiceFlow.app"
 
 echo "🔨 Building VoiceFlow..."
@@ -18,6 +17,19 @@ xcodebuild -project "$PROJECT_DIR/VoiceFlow/VoiceFlow.xcodeproj" \
   -configuration Debug \
   build \
   -quiet
+
+# DerivedData에서 빌드된 앱 경로를 동적으로 가져옴
+DERIVED_DATA=$(xcodebuild -project "$PROJECT_DIR/VoiceFlow/VoiceFlow.xcodeproj" \
+  -scheme VoiceFlow \
+  -configuration Debug \
+  -showBuildSettings 2>/dev/null \
+  | grep -m1 "BUILT_PRODUCTS_DIR" \
+  | awk '{print $3}')
+
+if [ -z "$DERIVED_DATA" ] || [ ! -d "$DERIVED_DATA/VoiceFlow.app" ]; then
+  echo "❌ Build product not found at: $DERIVED_DATA/VoiceFlow.app"
+  exit 1
+fi
 
 echo "✅ Build succeeded"
 
@@ -29,7 +41,7 @@ fi
 
 # ditto로 복사 (코드사인 보존 - cp -R 사용 금지!)
 echo "📦 Copying VoiceFlow.app (ditto, preserving codesign)..."
-ditto "$DERIVED_DATA" "$DEST"
+ditto "$DERIVED_DATA/VoiceFlow.app" "$DEST"
 
 echo ""
 echo "✅ Build & deploy complete!"

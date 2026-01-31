@@ -2,8 +2,23 @@ import AppKit
 import AudioToolbox
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private static let pythonPath = "/Users/brucechoe/clawd/.venvs/qwen3-asr/bin/python3"
-    private static let serverScriptPath = "/Users/brucechoe/Projects/voiceflow/server/main.py"
+    /// Resolve paths relative to the app bundle's parent directory (project root).
+    /// e.g. /path/to/voiceflow/VoiceFlow.app → /path/to/voiceflow
+    private static var projectRoot: String {
+        let bundlePath = Bundle.main.bundlePath
+        return (bundlePath as NSString).deletingLastPathComponent
+    }
+
+    private static var pythonPath: String {
+        if let envPath = ProcessInfo.processInfo.environment["VOICEFLOW_PYTHON"] {
+            return envPath
+        }
+        return (projectRoot as NSString).appendingPathComponent(".venv/bin/python3")
+    }
+
+    private static var serverScriptPath: String {
+        return (projectRoot as NSString).appendingPathComponent("server/main.py")
+    }
 
     private var statusBarController: StatusBarController!
     private var hotkeyManager: HotkeyManager!

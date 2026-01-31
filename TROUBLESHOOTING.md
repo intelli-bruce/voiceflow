@@ -132,7 +132,7 @@ ASR 서버(Python, ws://localhost:9876)가 안 떠있음.
 
 수동 실행이 필요한 경우:
 ```bash
-/Users/brucechoe/clawd/.venvs/qwen3-asr/bin/python3 /Users/brucechoe/Projects/voiceflow/server/main.py
+.venv/bin/python3 server/main.py
 ```
 
 ---
@@ -162,7 +162,7 @@ open VoiceFlow.app
 ### 로그 확인
 ```bash
 # Ghostty에서 직접 실행하면 NSLog가 터미널에 출력됨
-/Users/brucechoe/Projects/voiceflow/VoiceFlow.app/Contents/MacOS/VoiceFlow
+./VoiceFlow.app/Contents/MacOS/VoiceFlow
 
 # 시스템 로그 (open으로 실행한 경우)
 log show --predicate 'processImagePath contains "VoiceFlow"' --last 5m --style compact

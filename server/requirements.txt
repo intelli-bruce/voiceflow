@@ -1,3 +1,4 @@
 websockets
 numpy
 soundfile
+qwen-asr
