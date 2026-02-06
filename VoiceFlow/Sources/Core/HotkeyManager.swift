@@ -17,6 +17,13 @@ final class HotkeyManager {
         let eventMask: CGEventMask = (1 << CGEventType.flagsChanged.rawValue) |
                                       (1 << CGEventType.keyDown.rawValue)
 
+        let trusted = AXIsProcessTrusted()
+        NSLog("[HotkeyManager] AXIsProcessTrusted = %@", trusted ? "YES" : "NO")
+        if !trusted {
+            NSLog("[HotkeyManager] Requesting accessibility permission...")
+            let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
+            AXIsProcessTrustedWithOptions(options)
+        }
         NSLog("[HotkeyManager] Attempting to create event tap...")
 
         guard let tap = CGEvent.tapCreate(
@@ -44,6 +51,15 @@ final class HotkeyManager {
     }
 
     private func handleEvent(type: CGEventType, event: CGEvent) {
+        // macOS can disable the tap silently; re-enable it
+        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            NSLog("[HotkeyManager] Event tap was disabled (type=%d), re-enabling...", type.rawValue)
+            if let tap = eventTap {
+                CGEvent.tapEnable(tap: tap, enable: true)
+            }
+            return
+        }
+
         if type == .keyDown {
             if controlIsDown {
                 otherKeyWhileControl = true

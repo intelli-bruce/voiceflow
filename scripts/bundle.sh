@@ -43,5 +43,29 @@ cat > "$APP_DIR/Contents/Info.plist" << 'PLIST'
 </plist>
 PLIST
 
+# Code sign with VoiceFlowDev certificate + Hardened Runtime
+SIGN_NAME="VoiceFlowDev"
+ENTITLEMENTS="$PROJECT_DIR/VoiceFlow/VoiceFlow.entitlements"
+
+# Get the valid certificate hash to avoid ambiguity with duplicates
+SIGN_HASH=$(security find-identity -v -p codesigning | grep "$SIGN_NAME" | head -1 | awk '{print $2}')
+
+if [ -n "$SIGN_HASH" ]; then
+    echo "Signing with $SIGN_NAME ($SIGN_HASH)..."
+    codesign --force --sign "$SIGN_HASH" \
+        --options runtime \
+        --entitlements "$ENTITLEMENTS" \
+        --identifier "com.voiceflow.app" \
+        "$APP_DIR"
+    echo "✅ Signed with Hardened Runtime"
+else
+    echo "⚠️  $SIGN_NAME certificate not found, falling back to ad-hoc signing"
+    codesign --force --sign - \
+        --options runtime \
+        --entitlements "$ENTITLEMENTS" \
+        --identifier "com.voiceflow.app" \
+        "$APP_DIR"
+fi
+
 echo "Done! App bundle at: $APP_DIR"
 echo "Run with: open $APP_DIR"

@@ -33,6 +33,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var stopSoundID: SystemSoundID = 0
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Redirect stderr to log file so NSLog output is captured even with `open`
+        let logPath = "/tmp/voiceflow-app.log"
+        FileManager.default.createFile(atPath: logPath, contents: nil)
+        freopen(logPath, "a", stderr)
+
         NSLog("[AppDelegate] applicationDidFinishLaunching called!")
         // Hide dock icon
         NSApp.setActivationPolicy(.accessory)
@@ -110,8 +115,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: Self.pythonPath)
         process.arguments = [Self.serverScriptPath]
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
+        let serverLogPath = "/tmp/voiceflow-server.log"
+        FileManager.default.createFile(atPath: serverLogPath, contents: nil)
+        let logHandle = FileHandle(forWritingAtPath: serverLogPath)
+        process.standardOutput = logHandle
+        process.standardError = logHandle
 
         do {
             try process.run()

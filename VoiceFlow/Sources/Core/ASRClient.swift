@@ -40,10 +40,14 @@ final class ASRClient {
     }
 
     func sendAudioChunk(_ data: Data) {
+        guard webSocketTask != nil else {
+            NSLog("[ASRClient] WARNING: No WebSocket connection, dropping %d bytes", data.count)
+            return
+        }
         let message = URLSessionWebSocketTask.Message.data(data)
         webSocketTask?.send(message) { error in
             if let error {
-                print("[ASRClient] Send audio error: \(error)")
+                NSLog("[ASRClient] Send audio error: %@", error.localizedDescription)
             }
         }
     }
